@@ -1,0 +1,174 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <ctime>
+#include <iomanip>
+
+using namespace std;
+
+struct Book {
+    string title;
+    string author;
+    string ISBN;
+    bool isAvailable;
+    time_t dueDate; // store due date timestamp, 0 if available
+};
+
+vector<Book> library;
+
+const int FINE_PER_DAY = 2; // 2 units per day fine
+
+// Utility function to convert time_t to string (date)
+string dateToString(time_t t) {
+    tm *ltm = localtime(&t);
+    char buf[20];
+    strftime(buf, sizeof(buf), "%Y-%m-%d", ltm);
+    return string(buf);
+}
+
+time_t getCurrentTime() {
+    return time(nullptr);
+}
+
+// Add a book to the library
+void addBook(const string& title, const string& author, const string& ISBN) {
+    Book newBook = {title, author, ISBN, true, 0};
+    library.push_back(newBook);
+    cout << "Book added successfully.\n";
+}
+
+// Search books by title, author, or ISBN
+void searchBooks() {
+    cout << "Search by: 1.Title  2.Author  3.ISBN\n";
+    int choice; cin >> choice;
+    cin.ignore();
+
+    string keyword;
+    cout << "Enter keyword: ";
+    getline(cin, keyword);
+
+    bool found = false;
+    for (auto &book : library) {
+        bool match = false;
+        if (choice == 1 && book.title.find(keyword) != string::npos)
+            match = true;
+        else if (choice == 2 && book.author.find(keyword) != string::npos)
+            match = true;
+        else if (choice == 3 && book.ISBN == keyword)
+            match = true;
+
+        if (match) {
+            cout << "\nTitle: " << book.title
+                 << "\nAuthor: " << book.author
+                 << "\nISBN: " << book.ISBN
+                 << "\nAvailable: " << (book.isAvailable ? "Yes" : "No");
+            if (!book.isAvailable)
+                cout << "\nDue Date: " << dateToString(book.dueDate);
+            cout << "\n--------------------------\n";
+            found = true;
+        }
+    }
+    if (!found) cout << "No books found matching your search.\n";
+}
+
+// Checkout book
+void checkoutBook() {
+    cout << "Enter ISBN to checkout: ";
+    string isbn; cin >> isbn;
+
+    for (auto &book : library) {
+        if (book.ISBN == isbn) {
+            if (!book.isAvailable) {
+                cout << "Book is currently checked out. Due back on " << dateToString(book.dueDate) << "\n";
+                return;
+            }
+            book.isAvailable = false;
+
+            // Set due date to 14 days from now
+            time_t now = getCurrentTime();
+            book.dueDate = now + 14 * 24 * 60 * 60;
+
+            cout << "Book checked out successfully. Due date: " << dateToString(book.dueDate) << "\n";
+            return;
+        }
+    }
+    cout << "Book with ISBN " << isbn << " not found.\n";
+}
+
+// Return book and calculate fine
+void returnBook() {
+    cout << "Enter ISBN to return: ";
+    string isbn; cin >> isbn;
+
+    for (auto &book : library) {
+        if (book.ISBN == isbn) {
+            if (book.isAvailable) {
+                cout << "This book is not currently checked out.\n";
+                return;
+            }
+
+            time_t now = getCurrentTime();
+            if (now > book.dueDate) {
+                double diff = difftime(now, book.dueDate);
+                int daysLate = diff / (24 * 60 * 60);
+                int fine = daysLate * FINE_PER_DAY;
+                cout << "Book is " << daysLate << " day(s) late. Fine: " << fine << " units.\n";
+            } else {
+                cout << "Book returned on time. No fine.\n";
+            }
+
+            book.isAvailable = true;
+            book.dueDate = 0;
+            return;
+        }
+    }
+    cout << "Book with ISBN " << isbn << " not found.\n";
+}
+
+// Display menu
+void menu() {
+    cout << "\n===== Library Management System =====\n";
+    cout << "1. Add Book\n";
+    cout << "2. Search Books\n";
+    cout << "3. Checkout Book\n";
+    cout << "4. Return Book\n";
+    cout << "5. Exit\n";
+    cout << "Choose an option: ";
+}
+
+int main() {
+    while (true) {
+        menu();
+        int choice;
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+            case 1: {
+                string title, author, isbn;
+                cout << "Enter Title: ";
+                getline(cin, title);
+                cout << "Enter Author: ";
+                getline(cin, author);
+                cout << "Enter ISBN: ";
+                getline(cin, isbn);
+                addBook(title, author, isbn);
+                break;
+            }
+            case 2:
+                searchBooks();
+                break;
+            case 3:
+                checkoutBook();
+                break;
+            case 4:
+                returnBook();
+                break;
+            case 5:
+                cout << "Exiting program...\n";
+                return 0;
+            default:
+                cout << "Invalid choice. Try again.\n";
+        }
+    }
+}
